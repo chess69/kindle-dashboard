@@ -83,7 +83,7 @@ def main():
     right_margin = WIDTH - 80
     max_text_width = right_margin - left_margin
 
-    for time_text, desc in events:
+        for time_text, desc in events:
         # Time
         time_w, time_h = draw.textsize(time_text, font=event_font)
         draw.text((left_margin, y), time_text, font=event_font, fill=0)
@@ -93,4 +93,9 @@ def main():
         line_y = y
         for i, line in enumerate(desc_lines):
             x = left_margin + time_w + 20
-            draw.text((x, line_y), line, font=event_font, fill
+            draw.text((x, line_y), line, font=event_font, fill=0)   # <-- FIXED LINE
+            _, lh = draw.textsize(line, font=event_font)
+            line_y += lh + 4
+
+        y = max(line_y, y + time_h) + 12  # gap before next event
+
