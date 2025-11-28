@@ -10,40 +10,12 @@ def load_font(path, size):
     except Exception:
         return ImageFont.load_default()
 
-def draw_centered_text(draw, text, y, font, fill=0):
-    """Draw a single line of text centered horizontally."""
-    w, h = draw.textsize(text, font=font)
-    x = (WIDTH - w) // 2
-    draw.text((x, y), text, font=font, fill=fill)
-    return y + h
-
-def wrap_text(draw, text, font, max_width):
-    """Very simple word-wrap for one paragraph."""
-    words = text.split()
-    lines = []
-    current = []
-
-    for word in words:
-        test = " ".join(current + [word])
-        w, _ = draw.textsize(test, font=font)
-        if w <= max_width:
-            current.append(word)
-        else:
-            if current:
-                lines.append(" ".join(current))
-            current = [word]
-
-    if current:
-        lines.append(" ".join(current))
-
-    return lines
-
 def main():
     # Create white background
-    img = Image.new("L", (WIDTH, HEIGHT), 255)
+    img = Image.new("L", (WIDTH, HEIGHT), 255)  # L = greyscale
     draw = ImageDraw.Draw(img)
 
-    # Time & date (UTC for now – matches Ireland in winter)
+    # Time & date (UTC – fine for now)
     now = datetime.utcnow()
     time_str = now.strftime("%H:%M")
     date_str = now.strftime("%a %d %b %Y")
@@ -55,52 +27,54 @@ def main():
     section_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 40)
     event_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
 
-    # Header
+    # Header: title, time, date
     y = 60
-    y = draw_centered_text(draw, "Bathroom Dashboard", y, title_font)
-    y += 30
-    y = draw_centered_text(draw, time_str, y, time_font)
-    y += 10
-    y = draw_centered_text(draw, date_str, y, date_font)
-    y += 40
+    title_w, title_h = draw.textsize("Bathroom Dashboard", font=title_font)
+    draw.text(((WIDTH - title_w) // 2, y), "Bathroom Dashboard", font=title_font, fill=0)
+    y += title_h + 30
+
+    time_w, time_h = draw.textsize(time_str, font=time_font)
+    draw.text(((WIDTH - time_w) // 2, y), time_str, font=time_font, fill=0)
+    y += time_h + 10
+
+    date_w, date_h = draw.textsize(date_str, font=date_font)
+    draw.text(((WIDTH - date_w) // 2, y), date_str, font=date_font, fill=0)
+    y += date_h + 40
 
     # Divider line
     draw.line((80, y, WIDTH - 80, y), fill=0, width=3)
     y += 30
 
-    # Hard-coded events (we'll replace with real ones later)
+    # Section title
+    section_text = "Today"
+    sec_w, sec_h = draw.textsize(section_text, font=section_font)
+    draw.text(((WIDTH - sec_w) // 2, y), section_text, font=section_font, fill=0)
+    y += sec_h + 20
+
+    # Hard-coded events
     events = [
         ("10:00", "Coffee with Rachel"),
         ("12:30", "Rugby · Edendale vs Ashbourne"),
         ("19:00", "Movie Night"),
     ]
 
-    # Section heading
-    y = draw_centered_text(draw, "Today", y, section_font)
-    y += 10
-
-    # Layout margins
     left_margin = 80
-    max_text_width = WIDTH - 160
+    max_text_width = WIDTH - 2 * left_margin
 
-    # Draw each event
     for time_text, desc in events:
-        # Time
+        # Draw time
         time_w, time_h = draw.textsize(time_text, font=event_font)
         draw.text((left_margin, y), time_text, font=event_font, fill=0)
 
-        # Description (wrapped)
-        desc_lines = wrap_text(draw, desc, event_font, max_text_width - time_w - 20)
-        line_y = y
+        # Draw description to the right (no fancy wrapping yet)
+        desc_x = left_margin + time_w + 20
+        desc_y = y
+        draw.text((desc_x, desc_y), desc, font=event_font, fill=0)
 
-        for line in desc_lines:
-            x = left_margin + time_w + 20
-            draw.text((x, line_y), line, font=event_font, fill=0)
-            _, lh = draw.textsize(line, font=event_font)
-            line_y += lh + 4
-
-        y = max(line_y, y + time_h) + 20
+        # Move down for next event
+        y += max(time_h, date_h) + 20
 
     img.save("dashboard.png")
 
-if __name__ == "__main
+if __name__ == "__main__":
+    main()
