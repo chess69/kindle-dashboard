@@ -40,22 +40,22 @@ def wrap_text(draw, text, font, max_width):
 
 def main():
     # Create white background
-    img = Image.new("L", (WIDTH, HEIGHT), 255)  # L = greyscale
+    img = Image.new("L", (WIDTH, HEIGHT), 255)
     draw = ImageDraw.Draw(img)
 
-    # --- Time & date (UTC for now – same as Dublin in winter) ---
+    # Time & date (UTC for now – matches Ireland in winter)
     now = datetime.utcnow()
     time_str = now.strftime("%H:%M")
     date_str = now.strftime("%a %d %b %Y")
 
-    # --- Fonts ---
+    # Fonts
     title_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 52)
     time_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 96)
     date_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40)
     section_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 40)
     event_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
 
-    # --- Header: Title / Time / Date ---
+    # Header
     y = 60
     y = draw_centered_text(draw, "Bathroom Dashboard", y, title_font)
     y += 30
@@ -64,11 +64,11 @@ def main():
     y = draw_centered_text(draw, date_str, y, date_font)
     y += 40
 
-    # Draw a horizontal divider line
+    # Divider line
     draw.line((80, y, WIDTH - 80, y), fill=0, width=3)
     y += 30
 
-    # --- Events (for now, hard-coded examples) ---
+    # Hard-coded events (we'll replace with real ones later)
     events = [
         ("10:00", "Coffee with Rachel"),
         ("12:30", "Rugby · Edendale vs Ashbourne"),
@@ -79,23 +79,28 @@ def main():
     y = draw_centered_text(draw, "Today", y, section_font)
     y += 10
 
+    # Layout margins
     left_margin = 80
-    right_margin = WIDTH - 80
-    max_text_width = right_margin - left_margin
+    max_text_width = WIDTH - 160
 
-        for time_text, desc in events:
+    # Draw each event
+    for time_text, desc in events:
         # Time
         time_w, time_h = draw.textsize(time_text, font=event_font)
         draw.text((left_margin, y), time_text, font=event_font, fill=0)
 
-        # Description to the right, wrapped if too long
+        # Description (wrapped)
         desc_lines = wrap_text(draw, desc, event_font, max_text_width - time_w - 20)
         line_y = y
-        for i, line in enumerate(desc_lines):
+
+        for line in desc_lines:
             x = left_margin + time_w + 20
-            draw.text((x, line_y), line, font=event_font, fill=0)   # <-- FIXED LINE
+            draw.text((x, line_y), line, font=event_font, fill=0)
             _, lh = draw.textsize(line, font=event_font)
             line_y += lh + 4
 
-        y = max(line_y, y + time_h) + 12  # gap before next event
+        y = max(line_y, y + time_h) + 20
 
+    img.save("dashboard.png")
+
+if __name__ == "__main
