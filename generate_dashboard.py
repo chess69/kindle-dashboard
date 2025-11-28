@@ -1,82 +1,125 @@
-from datetime import datetime, timezone
+import os
+from datetime import datetime
+import pytz
+
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+
 from PIL import Image, ImageDraw, ImageFont
 
-WIDTH, HEIGHT = 1072, 1448  # Paperwhite 3 resolution
+# ----- Google Calendar bits -----
 
-def load_font(path, size):
-    try:
-        return ImageFont.truetype(path, size)
-    except:
-        return ImageFont.load_default()
+SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 
-def text_size(draw, text, font):
-    # Use textbbox to get width/height
-    left, top, right, bottom = draw.textbbox((0, 0), text, font=font)
-    return right - left, bottom - top
+def get_calendar_service():
+    creds = Credentials(
+        token=None,
+        refresh_token=os.environ["GOOGLE_REFRESH_TOKEN"],
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=os.environ["GOOGLE_CLIENT_ID"],
+        client_secret=os.environ["GOOGLE_CLIENT_SECRET"],
+        scopes=SCOPES,
+    )
+    creds.refresh(Request())
+    service = build("calendar", "v3", credentials=creds)
+    return service
 
-def main():
+def get_upcoming_events(max_results=5, timezone="Europe/Dublin"):
+    service = get_calendar_service()
+    tz = pytz.timezone(timezone)
+    now = datetime.now(tz)
+    now_iso = now.isoformat()
+
+    events_result = service.events().list(
+        calendarId=os.environ["GOOGLE_CALENDAR_ID"],
+        timeMin=now_iso,
+        maxResults=max_results,
+        singleEvents=True,
+        orderBy="startTime",
+    ).execute()
+
+    items = events_result.get("items", [])
+    events = []
+
+    for ev in items:
+        start = ev.get("start", {})
+        dt_str = start.get("dateTime") or start.get("date")
+        if not dt_str:
+            continue
+
+        # dateTime (has a time) vs all-day (date only)
+        if "T" in dt_str:
+            # Normal event with time
+            dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00")).astimezone(tz)
+        else:
+            # All-day event
+            dt = datetime.fromisoformat(dt_str + "T00:00:00").astimezone(tz)
+
+        events.append({
+            "summary": ev.get("summary", "(No title)"),
+            "datetime": dt,
+        })
+
+    return events
+
+# ----- Drawing the dashboard -----
+
+WIDTH = 1200
+HEIGHT = 1600  # portrait-ish
+
+def draw_dashboard():
+    tz = pytz.timezone("Europe/Dublin")
+    now = datetime.now(tz)
+
+    # White background, 8-bit grayscale
     img = Image.new("L", (WIDTH, HEIGHT), 255)
     draw = ImageDraw.Draw(img)
 
-    # Time/date using proper timezone-aware UTC
-    now = datetime.now(timezone.utc)
-    time_str = now.strftime("%H:%M")
-    date_str = now.strftime("%a %d %b %Y")
+    # Fonts – will fall back to default if custom ones aren't present
+    try:
+        font_big = ImageFont.truetype("Roboto-Bold.ttf", 96)
+        font_med = ImageFont.truetype("Roboto-Regular.ttf", 48)
+        font_small = ImageFont.truetype("Roboto-Regular.ttf", 36)
+    except IOError:
+        font_big = ImageFont.load_default()
+        font_med = ImageFont.load_default()
+        font_small = ImageFont.load_default()
 
-    # Fonts
-    title_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 52)
-    time_font  = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 96)
-    date_font  = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40)
-    section_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 40)
-    event_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
+    # Time and date
+    time_text = now.strftime("%H:%M")
+    date_text = now.strftime("%A %d %B %Y")
 
-    y = 60
+    tw, th = draw.textsize(time_text, font=font_big)
+    dw, dh = draw.textsize(date_text, font=font_med)
 
-    # Title
-    title_w, title_h = text_size(draw, "Bathroom Dashboard", title_font)
-    draw.text(((WIDTH - title_w) // 2, y), "Bathroom Dashboard", font=title_font, fill=0)
-    y += title_h + 30
+    draw.text(((WIDTH - tw) // 2, 40), time_text, font=font_big, fill=0)
+    draw.text(((WIDTH - dw) // 2, 40 + th + 10), date_text, font=font_med, fill=0)
 
-    # Time
-    time_w, time_h = text_size(draw, time_str, time_font)
-    draw.text(((WIDTH - time_w) // 2, y), time_str, font=time_font, fill=0)
-    y += time_h + 10
-
-    # Date
-    date_w, date_h = text_size(draw, date_str, date_font)
-    draw.text(((WIDTH - date_w) // 2, y), date_str, font=date_font, fill=0)
-    y += date_h + 40
-
-    # Divider
-    draw.line((80, y, WIDTH - 80, y), fill=0, width=3)
+    # Horizontal line
+    y = 40 + th + 10 + dh + 30
+    draw.line((80, y, WIDTH - 80, y), fill=0, width=2)
     y += 30
 
-    # Section heading
-    sec_w, sec_h = text_size(draw, "Today", section_font)
-    draw.text(((WIDTH - sec_w) // 2, y), "Today", font=section_font, fill=0)
-    y += sec_h + 20
+    # Get events
+    events = get_upcoming_events()
 
-    # Example events
-    events = [
-        ("10:00", "Coffee with Rachel"),
-        ("12:30", "Rugby · Edendale vs Ashbourne"),
-        ("19:00", "Movie Night"),
-    ]
+    if not events:
+        draw.text((80, y), "No upcoming events", font=font_med, fill=0)
+    else:
+        draw.text((80, y), "Upcoming events:", font=font_med, fill=0)
+        y += 60
+        for ev in events:
+            dt = ev["datetime"]
+            line1 = dt.strftime("%a %d %b  %H:%M")
+            line2 = ev["summary"]
 
-    left_margin = 80
-
-    for time_text, desc in events:
-        # Time
-        t_w, t_h = text_size(draw, time_text, event_font)
-        draw.text((left_margin, y), time_text, font=event_font, fill=0)
-
-        # Description
-        draw.text((left_margin + t_w + 20, y), desc, font=event_font, fill=0)
-
-        # Move down
-        y += max(t_h, 40) + 20
+            draw.text((80, y), line1, font=font_small, fill=0)
+            y += 40
+            draw.text((120, y), line2, font=font_small, fill=0)
+            y += 60
 
     img.save("dashboard.png")
 
 if __name__ == "__main__":
-    main()
+    draw_dashboard()
