@@ -1,5 +1,4 @@
 from datetime import datetime
-from zoneinfo import ZoneInfo
 from PIL import Image, ImageDraw, ImageFont
 
 WIDTH, HEIGHT = 1072, 1448  # Paperwhite 3 native resolution (portrait)
@@ -44,13 +43,12 @@ def main():
     img = Image.new("L", (WIDTH, HEIGHT), 255)  # L = greyscale
     draw = ImageDraw.Draw(img)
 
-    # --- Time & date (Europe/Dublin) ---
-    now = datetime.now(ZoneInfo("Europe/Dublin"))
+    # --- Time & date (UTC for now – same as Dublin in winter) ---
+    now = datetime.utcnow()
     time_str = now.strftime("%H:%M")
     date_str = now.strftime("%a %d %b %Y")
 
     # --- Fonts ---
-    # These paths exist on GitHub's ubuntu runners. If they fail, we fall back.
     title_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 52)
     time_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 96)
     date_font = load_font("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40)
@@ -71,7 +69,6 @@ def main():
     y += 30
 
     # --- Events (for now, hard-coded examples) ---
-    # Later we can replace this list with real calendar events.
     events = [
         ("10:00", "Coffee with Rachel"),
         ("12:30", "Rugby · Edendale vs Ashbourne"),
@@ -96,13 +93,4 @@ def main():
         line_y = y
         for i, line in enumerate(desc_lines):
             x = left_margin + time_w + 20
-            draw.text((x, line_y), line, font=event_font, fill=0)
-            _, lh = draw.textsize(line, font=event_font)
-            line_y += lh + 4
-
-        y = max(line_y, y + time_h) + 12  # gap before next event
-
-    img.save("dashboard.png")
-
-if __name__ == "__main__":
-    main()
+            draw.text((x, line_y), line, font=event_font, fill
