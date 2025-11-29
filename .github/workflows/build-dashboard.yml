@@ -27,14 +27,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-api-python-client google-auth google-auth-oauthlib pillow pytz
 
-      - name: Generate dashboard.png
+       - name: Generate dashboard.png
         env:
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_AUTH_JSON: ${{ secrets.GOOGLE_AUTH_JSON }}
           GOOGLE_CALENDAR_ID: ${{ secrets.GOOGLE_CALENDAR_ID }}
         run: |
           python generate_dashboard.py
+
 
       - name: Commit and push updated dashboard
         run: |
