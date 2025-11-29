@@ -1,10 +1,13 @@
 name: Build Dashboard
 
 on:
+  push:
+    branches:
+      - "*"
   schedule:
-    # every 15 minutes – we can tweak later
     - cron: "*/15 * * * *"
   workflow_dispatch: {}
+
 
 jobs:
   build-dashboard:
