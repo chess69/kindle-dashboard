@@ -1,13 +1,17 @@
-name: Build Kindle Dashboard
+name: Build Dashboard
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # run every 15 minutes
-  workflow_dispatch:         # allow manual runs from the Actions tab
+    # every 15 minutes – we can tweak later
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
 
 jobs:
-  build:
+  build-dashboard:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
 
     steps:
       - name: Check out repo
@@ -16,30 +20,26 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install google-api-python-client google-auth google-auth-oauthlib pillow pytz
 
-      - name: Generate dashboard PNG
+      - name: Generate dashboard.png
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_CALENDAR_ID: ${{ secrets.GOOGLE_CALENDAR_ID }}
         run: |
           python generate_dashboard.py
 
-      - name: Upload artifact for GitHub Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-    steps:
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+      - name: Commit and push updated dashboard
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dashboard.png
+          git commit -m "Update dashboard" || echo "No changes to commit"
+          git push
