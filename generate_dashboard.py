@@ -1,30 +1,37 @@
 import os
 import json
 from datetime import datetime
+
 import pytz
-
-
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
-
 from PIL import Image, ImageDraw, ImageFont
 
-# ----- Google Calendar bits -----
-
+# Google Calendar scope
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 
+
 def get_calendar_service():
-    # GOOGLE_AUTH_JSON is a JSON string with type, client_id, client_secret, refresh_token
+    """
+    Build an authenticated Google Calendar service
+    using the GOOGLE_AUTH_JSON secret.
+    """
     auth_json = os.environ["GOOGLE_AUTH_JSON"]
     info = json.loads(auth_json)
+
+    # info should contain: type, client_id, client_secret, refresh_token
     creds = Credentials.from_authorized_user_info(info, SCOPES)
     creds.refresh(Request())
+
     service = build("calendar", "v3", credentials=creds)
     return service
 
 
 def get_upcoming_events(max_results=5, timezone="Europe/Dublin"):
+    """
+    Fetch the next few upcoming events from the configured calendar.
+    """
     service = get_calendar_service()
     tz = pytz.timezone(timezone)
     now = datetime.now(tz)
@@ -47,25 +54,31 @@ def get_upcoming_events(max_results=5, timezone="Europe/Dublin"):
         if not dt_str:
             continue
 
-        # dateTime (has a time) vs all-day (date only)
+        # Normal timed event
         if "T" in dt_str:
-            # Normal event with time
-            dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00")).astimezone(tz)
+            # Handle possible trailing Z
+            if dt_str.endswith("Z"):
+                dt_str = dt_str.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(dt_str).astimezone(tz)
         else:
-            # All-day event
-            dt = datetime.fromisoformat(dt_str + "T00:00:00").astimezone(tz)
+            # All-day event (date only)
+            dt_full = dt_str + "T00:00:00"
+            dt = datetime.fromisoformat(dt_full).astimezone(tz)
 
-        events.append({
-            "summary": ev.get("summary", "(No title)"),
-            "datetime": dt,
-        })
+        events.append(
+            {
+                "summary": ev.get("summary", "(No title)"),
+                "datetime": dt,
+            }
+        )
 
     return events
 
-# ----- Drawing the dashboard -----
 
+# Canvas size for the dashboard image
 WIDTH = 1200
-HEIGHT = 1600  # portrait-ish
+HEIGHT = 1600  # portrait
+
 
 def draw_dashboard():
     tz = pytz.timezone("Europe/Dublin")
@@ -75,7 +88,7 @@ def draw_dashboard():
     img = Image.new("L", (WIDTH, HEIGHT), 255)
     draw = ImageDraw.Draw(img)
 
-    # Fonts – will fall back to default if custom ones aren't present
+    # Fonts – try custom, fall back to default
     try:
         font_big = ImageFont.truetype("Roboto-Bold.ttf", 96)
         font_med = ImageFont.truetype("Roboto-Regular.ttf", 48)
@@ -85,21 +98,21 @@ def draw_dashboard():
         font_med = ImageFont.load_default()
         font_small = ImageFont.load_default()
 
-      # ----- TIME & DATE -----
+    # ----- TIME & DATE -----
     time_text = now.strftime("%H:%M")
     date_text = now.strftime("%A, %d %B %Y")
 
-    # Time text bounding box
+    # Measure time text
     time_bbox = draw.textbbox((0, 0), time_text, font=font_big)
     tw = time_bbox[2] - time_bbox[0]
     th = time_bbox[3] - time_bbox[1]
 
-    # Date text bounding box
+    # Measure date text
     date_bbox = draw.textbbox((0, 0), date_text, font=font_med)
     dw = date_bbox[2] - date_bbox[0]
     dh = date_bbox[3] - date_bbox[1]
 
-    # Draw time centered
+    # Draw time centered near the top
     draw.text(((WIDTH - tw) // 2, 60), time_text, font=font_big, fill=0)
 
     # Draw date centered below time
@@ -112,65 +125,18 @@ def draw_dashboard():
     # Start y-position for events
     y = divider_y + 40
 
-    # ----- EVENT TITLE -----
-    draw.text((80, y), "Upcoming Events:", font=font_med, fill=0)
-    y += 70
-
-
     # Get events
     events = get_upcoming_events()
 
     if not events:
         draw.text((80, y), "No upcoming events", font=font_med, fill=0)
     else:
-        draw.text((80, y), "Upcoming events:", font=font_med, fill=0)
-        y += 60
-              for ev in events:
-        dt = ev["datetime"]
+        # Section title
+        draw.text((80, y), "Upcoming Events:", font=font_med, fill=0)
+        y += 70
 
-        # e.g. "Mon 11 Dec"
-        day_date = dt.strftime("%a %d %b")
+        for ev in events:
+            dt = ev["datetime"]
 
-        # e.g. "14:30"
-        time_str = dt.strftime("%H:%M")
-
-        # Event title
-        title = ev["summary"]
-
-        # Height of each event bar
-        bar_height = 90
-
-        # Stop if we’re near the bottom of the screen
-        if y + bar_height + 40 > HEIGHT:
-            break
-
-        # Draw full-width black bar with side margins
-        left_margin = 40
-        right_margin = 40
-        draw.rectangle(
-            (left_margin, y, WIDTH - right_margin, y + bar_height),
-            fill=0
-        )
-
-        # Text positions inside the bar
-        text_y = y + 20  # a bit down from the top of the bar
-
-        # White text
-        # Date on the left
-        draw.text((left_margin + 20, text_y), day_date, font=font_small, fill=255)
-
-        # Time next to date
-        draw.text((left_margin + 220, text_y), time_str, font=font_small, fill=255)
-
-        # Title a bit further right
-        draw.text((left_margin + 380, text_y), title, font=font_small, fill=255)
-
-        # Move y down for the next event
-        y += bar_height + 25
-
-
-
-    img.save("dashboard.png")
-
-if __name__ == "__main__":
-    draw_dashboard()
+            # e.g. "Sat 30 Nov"
+            day_date = dt.strftime("%a %d %b")_
