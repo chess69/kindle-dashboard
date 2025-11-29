@@ -1,6 +1,8 @@
 import os
+import json
 from datetime import datetime
 import pytz
+
 
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
@@ -13,17 +15,14 @@ from PIL import Image, ImageDraw, ImageFont
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 
 def get_calendar_service():
-    creds = Credentials(
-        token=None,
-        refresh_token=os.environ["GOOGLE_REFRESH_TOKEN"],
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=os.environ["GOOGLE_CLIENT_ID"],
-        client_secret=os.environ["GOOGLE_CLIENT_SECRET"],
-        scopes=SCOPES,
-    )
+    # GOOGLE_AUTH_JSON is a JSON string with type, client_id, client_secret, refresh_token
+    auth_json = os.environ["GOOGLE_AUTH_JSON"]
+    info = json.loads(auth_json)
+    creds = Credentials.from_authorized_user_info(info, SCOPES)
     creds.refresh(Request())
     service = build("calendar", "v3", credentials=creds)
     return service
+
 
 def get_upcoming_events(max_results=5, timezone="Europe/Dublin"):
     service = get_calendar_service()
