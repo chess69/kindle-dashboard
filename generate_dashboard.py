@@ -125,7 +125,7 @@ def draw_dashboard():
     else:
         draw.text((80, y), "Upcoming events:", font=font_med, fill=0)
         y += 60
-           for ev in events:
+              for ev in events:
         dt = ev["datetime"]
 
         # e.g. "Mon 11 Dec"
@@ -137,17 +137,37 @@ def draw_dashboard():
         # Event title
         title = ev["summary"]
 
-        # Draw the date on the left
-        draw.text((80, y), day_date, font=font_small, fill=0)
+        # Height of each event bar
+        bar_height = 90
 
-        # Draw the time next to it
-        draw.text((260, y), time_str, font=font_small, fill=0)
+        # Stop if we’re near the bottom of the screen
+        if y + bar_height + 40 > HEIGHT:
+            break
 
-        # Draw the title underneath
-        draw.text((80, y + 40), title, font=font_small, fill=0)
+        # Draw full-width black bar with side margins
+        left_margin = 40
+        right_margin = 40
+        draw.rectangle(
+            (left_margin, y, WIDTH - right_margin, y + bar_height),
+            fill=0
+        )
 
-        # Add spacing before next event
-        y += 110
+        # Text positions inside the bar
+        text_y = y + 20  # a bit down from the top of the bar
+
+        # White text
+        # Date on the left
+        draw.text((left_margin + 20, text_y), day_date, font=font_small, fill=255)
+
+        # Time next to date
+        draw.text((left_margin + 220, text_y), time_str, font=font_small, fill=255)
+
+        # Title a bit further right
+        draw.text((left_margin + 380, text_y), title, font=font_small, fill=255)
+
+        # Move y down for the next event
+        y += bar_height + 25
+
 
 
     img.save("dashboard.png")
