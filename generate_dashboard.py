@@ -90,8 +90,16 @@ def draw_dashboard():
     time_text = now.strftime("%H:%M")
     date_text = now.strftime("%A %d %B %Y")
 
-    tw, th = draw.textsize(time_text, font=font_big)
-    dw, dh = draw.textsize(date_text, font=font_med)
+   # Measure time text
+time_bbox = draw.textbbox((0, 0), time_text, font=font_big)
+tw = time_bbox[2] - time_bbox[0]
+th = time_bbox[3] - time_bbox[1]
+
+# Measure date text
+date_bbox = draw.textbbox((0, 0), date_text, font=font_med)
+dw = date_bbox[2] - date_bbox[0]
+dh = date_bbox[3] - date_bbox[1]
+
 
     draw.text(((WIDTH - tw) // 2, 40), time_text, font=font_big, fill=0)
     draw.text(((WIDTH - dw) // 2, 40 + th + 10), date_text, font=font_med, fill=0)
