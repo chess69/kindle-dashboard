@@ -88,6 +88,9 @@ def draw_dashboard():
     img = Image.new("L", (WIDTH, HEIGHT), 255)
     draw = ImageDraw.Draw(img)
 
+    # TEMP TEST: draw a big black bar at the very top
+    draw.rectangle((0, 0, WIDTH, 200), fill=0)
+    
     # Fonts – try custom, fall back to default
     try:
         font_big = ImageFont.truetype("Roboto-Bold.ttf", 96)
