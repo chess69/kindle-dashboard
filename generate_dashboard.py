@@ -139,4 +139,4 @@ def draw_dashboard():
             dt = ev["datetime"]
 
             # e.g. "Sat 30 Nov"
-            day_date = dt.strftime("%a %d %b")_
+            day_date = dt.strftime("%a %d %b")
