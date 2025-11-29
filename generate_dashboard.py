@@ -85,28 +85,37 @@ def draw_dashboard():
         font_med = ImageFont.load_default()
         font_small = ImageFont.load_default()
 
-    # Time and date
+      # ----- TIME & DATE -----
     time_text = now.strftime("%H:%M")
-    date_text = now.strftime("%A %d %B %Y")
+    date_text = now.strftime("%A, %d %B %Y")
 
-    # Measure time text
+    # Time text bounding box
     time_bbox = draw.textbbox((0, 0), time_text, font=font_big)
     tw = time_bbox[2] - time_bbox[0]
     th = time_bbox[3] - time_bbox[1]
 
-    # Measure date text
+    # Date text bounding box
     date_bbox = draw.textbbox((0, 0), date_text, font=font_med)
     dw = date_bbox[2] - date_bbox[0]
     dh = date_bbox[3] - date_bbox[1]
 
+    # Draw time centered
+    draw.text(((WIDTH - tw) // 2, 60), time_text, font=font_big, fill=0)
 
-    draw.text(((WIDTH - tw) // 2, 40), time_text, font=font_big, fill=0)
-    draw.text(((WIDTH - dw) // 2, 40 + th + 10), date_text, font=font_med, fill=0)
+    # Draw date centered below time
+    draw.text(((WIDTH - dw) // 2, 60 + th + 20), date_text, font=font_med, fill=0)
 
-    # Horizontal line
-    y = 40 + th + 10 + dh + 30
-    draw.line((80, y, WIDTH - 80, y), fill=0, width=2)
-    y += 30
+    # Divider line
+    divider_y = 60 + th + 20 + dh + 40
+    draw.line((80, divider_y, WIDTH - 80, divider_y), fill=0, width=3)
+
+    # Start y-position for events
+    y = divider_y + 40
+
+    # ----- EVENT TITLE -----
+    draw.text((80, y), "Upcoming Events:", font=font_med, fill=0)
+    y += 70
+
 
     # Get events
     events = get_upcoming_events()
@@ -116,15 +125,30 @@ def draw_dashboard():
     else:
         draw.text((80, y), "Upcoming events:", font=font_med, fill=0)
         y += 60
-        for ev in events:
-            dt = ev["datetime"]
-            line1 = dt.strftime("%a %d %b  %H:%M")
-            line2 = ev["summary"]
+           for ev in events:
+        dt = ev["datetime"]
 
-            draw.text((80, y), line1, font=font_small, fill=0)
-            y += 40
-            draw.text((120, y), line2, font=font_small, fill=0)
-            y += 60
+        # e.g. "Mon 11 Dec"
+        day_date = dt.strftime("%a %d %b")
+
+        # e.g. "14:30"
+        time_str = dt.strftime("%H:%M")
+
+        # Event title
+        title = ev["summary"]
+
+        # Draw the date on the left
+        draw.text((80, y), day_date, font=font_small, fill=0)
+
+        # Draw the time next to it
+        draw.text((260, y), time_str, font=font_small, fill=0)
+
+        # Draw the title underneath
+        draw.text((80, y + 40), title, font=font_small, fill=0)
+
+        # Add spacing before next event
+        y += 110
+
 
     img.save("dashboard.png")
 
